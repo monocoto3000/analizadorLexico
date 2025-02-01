@@ -45,6 +45,16 @@ def verificar_tokens(tokens):
     while i < len(tokens):
         tipo, lexema, pos = tokens[i]
 
+        if tipo == "OPERADOR" or tipo == "OPERADOR_LOGICO":
+            if i == len(tokens) - 1 or tokens[i+1][0] not in ["IDENTIFICADOR", "NUMERO_FLOAT", "NUMERO_ENTERO", "CADENA", "DELIMITADOR"]:
+                errores.append(f"Error en posición {pos}: Operador '{lexema}' sin valor después del operador")
+        
+        if tipo == "OPERADOR_LOGICO":
+            if i == 0 or tokens[i-1][0] not in ["IDENTIFICADOR", "NUMERO_FLOAT", "NUMERO_ENTERO"]:
+                errores.append(f"Error en posición {pos}: Operador '{lexema}' sin valor antes del operador lógico")
+            if i == len(tokens) - 1 or tokens[i+1][0] not in ["IDENTIFICADOR", "NUMERO_FLOAT", "NUMERO_ENTERO", "CADENA", "DELIMITADOR"]:
+                errores.append(f"Error en posición {pos}: Operador '{lexema}' sin valor después del operador lógico")
+
         if tipo == "IDENTIFICADOR":
             if i > 0:
                 token_anterior = tokens[i-1]
@@ -111,10 +121,11 @@ def verificar_tokens(tokens):
 codigo_fuente = """
 Begin
 fun app {
-    var x = 10
+    var x = 6
+    var y = 5
     var string = "Hola mundo"
     number y = 5.5
-    if (x > 5) {
+    if (x > y) {
         var sum = x + y
         return sum
     }
