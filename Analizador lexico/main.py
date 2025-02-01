@@ -34,16 +34,24 @@ def analizador_lexico(codigo_fuente):
 def verificar_tokens(tokens):
     errores = []
     delimitadores = 0
+    identificadores_declarados = set()
 
     if tokens[0][1] != "Begin":
         errores.append("Error: El código debe de iniciar con'Begin'")
     if tokens[-1][1] != "End":
         errores.append("Error: El código debe de terminar con 'End'")
 
-    for i in range(len(tokens)):
+    for i in range(1, len(tokens)):
         tipo, lexema, pos = tokens[i]
 
         if tipo == "PALABRA_RESERVADA":
+
+            if lexema in ["float", "int", "number", "return", "var", "call", "fun"]:
+                if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
+                    errores.append(f"Error en posición {pos}: Se esperaba un identificador después de '{lexema}'")
+                else:
+                    identificadores_declarados.add(tokens[i + 1][1])
+
             if lexema in ["fun", "var"]:
                 if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
                     errores.append(f"Error en posición {pos}: Se esperaba un identificador después de '{lexema}'")
@@ -61,6 +69,12 @@ def verificar_tokens(tokens):
             if i + 1 >= len(tokens) or tokens[i + 1][0] not in ["NUMERO_FLOAT", "NUMERO_ENTERO", "IDENTIFICADOR", "CADENA"]:
                 errores.append(f"Error en posición {pos}: Se esperaba un número, identificador o cadena después del operador '{lexema}'")
 
+        if tipo == "IDENTIFICADOR":
+            if lexema not in identificadores_declarados:
+                tipo_anterior, _ , _ = tokens[i - 1] if i > 0 else (None, None, None)
+                if tipo_anterior not in ["PALABRA_RESERVADA", "OPERADOR"]:
+                    errores.append(f"Error en posición {pos}: '{lexema}' indefinido")
+
         if tipo == "DELIMITADOR":
             delimitadores += 1
 
@@ -72,7 +86,7 @@ def verificar_tokens(tokens):
 codigo_fuente = """
 Begin
 fun app {
-    var num = 10
+    var x = 10
     var string = "Hola mundo"
     if (x > 5) {
         x = x + 1 
