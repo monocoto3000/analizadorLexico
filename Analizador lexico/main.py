@@ -6,8 +6,8 @@ TOKENS = [
     ("NUMERO_ENTERO", r"\b\d+\b"),
     ("OPERADOR_LOGICO", r"(==|!=|<|>)"),
     ("OPERADOR", r"[+\-*/=]"),
-    ("DELIMITADOR", r"[(){}]"),
-    ("LITERAL_CADENA", r'".*?"'),
+    ("DELIMITADOR", r"[(){}]") ,
+    ("CADENA", r'".*?"'),
     ("COMENTARIO", r"\#.*"),
     ("IDENTIFICADOR", r"[a-zA-Z_][a-zA-Z0-9_]*"),
     ("ESPACIO", r"[ \t\n]+")
@@ -35,37 +35,54 @@ def verificar_tokens(tokens):
     errores = []
     delimitadores = 0
 
+    if tokens[0][1] != "Begin":
+        errores.append("Error: El código debe de iniciar con'Begin'")
+    if tokens[-1][1] != "End":
+        errores.append("Error: El código debe de terminar con 'End'")
+
     for i in range(len(tokens)):
         tipo, lexema, pos = tokens[i]
 
-        # Después de 'fun' o 'var' debe haber un 'IDENTIFICADOR'
-        if tipo == "PALABRA_RESERVADA" and lexema in ["fun", "var"]:
-            if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
-                errores.append(f"Error en posición {pos}: Se esperaba un IDENTIFICADOR después de '{lexema}'")
+        if tipo == "PALABRA_RESERVADA":
+            if lexema in ["fun", "var"]:
+                if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
+                    errores.append(f"Error en posición {pos}: Se esperaba un identificador después de '{lexema}'")
+            if lexema == "call":
+                if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
+                    errores.append(f"Error en posición {pos}: Se esperaba un identificador después de 'call'")
+            if lexema in ["in", "out"]:
+                if i + 1 >= len(tokens) or tokens[i + 1][0] != "DELIMITADOR":
+                    errores.append(f"Error en posición {pos}: Se esperaba un delimitador después de '{lexema}'")
+            if lexema in ["if", "else"]:
+                if i + 1 >= len(tokens) or tokens[i + 1][0] != "DELIMITADOR":
+                    errores.append(f"Error en posición {pos}: Se esperaba un delimitador después de '{lexema}'")
 
-        # Después de un 'OPERADOR' debe haber un 'NUMERO_FLOAT' o 'NUMERO_ENTERO' o 'IDENTIFICADOR'
         if tipo == "OPERADOR":
-            if i + 1 >= len(tokens) or tokens[i + 1][0] not in ["NUMERO_FLOAT", "NUMERO_ENTERO", "IDENTIFICADOR"]:
-                errores.append(f"Error en posición {pos}: Se esperaba un número o identificador después del operador '{lexema}'")
+            if i + 1 >= len(tokens) or tokens[i + 1][0] not in ["NUMERO_FLOAT", "NUMERO_ENTERO", "IDENTIFICADOR", "CADENA"]:
+                errores.append(f"Error en posición {pos}: Se esperaba un número, identificador o cadena después del operador '{lexema}'")
 
-        # Contador de Delimitadores 
         if tipo == "DELIMITADOR":
             delimitadores += 1
 
-    # La cantidad de delimitadores debe ser par
     if delimitadores % 2 != 0:
-        errores.append("Error: La cantidad de delimitadores no es par (faltan cierres o aperturas)")
+        errores.append("Error: Faltan cierres o aperturas de delimitadores")
 
     return errores
 
 codigo_fuente = """
-fun ejemplillo {
-    var x = 10
+Begin
+fun app {
+    var num = 10
+    var string = "Hola mundo"
     if (x > 5) {
         x = x + 1 
+        return x
     }
+    out(x)
     # Comentario
 }
+call app
+End
 """
 
 try:
