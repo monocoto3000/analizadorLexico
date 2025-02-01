@@ -81,7 +81,7 @@ try:
         for error in errores:
             print(error)
     else:
-        print("\nNo se encontraron errores.")
+        print("\nNo se encontraron errores")
 
 except ValueError as e:
     print(e)
