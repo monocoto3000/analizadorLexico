@@ -33,53 +33,78 @@ def analizador_lexico(codigo_fuente):
 
 def verificar_tokens(tokens):
     errores = []
-    delimitadores = 0
-    identificadores_declarados = set()
+    delimitadores_stack = []
+    identificadores_definidos = set() 
 
     if tokens[0][1] != "Begin":
-        errores.append("Error: El código debe de iniciar con'Begin'")
+        errores.append("Error: El código debe iniciar con 'Begin'")
     if tokens[-1][1] != "End":
-        errores.append("Error: El código debe de terminar con 'End'")
+        errores.append("Error: El código debe terminar con 'End'")
 
-    for i in range(1, len(tokens)):
+    i = 0
+    while i < len(tokens):
         tipo, lexema, pos = tokens[i]
 
-        if tipo == "PALABRA_RESERVADA":
-
-            if lexema in ["float", "int", "number", "return", "var", "call", "fun"]:
-                if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
-                    errores.append(f"Error en posición {pos}: Se esperaba un identificador después de '{lexema}'")
-                else:
-                    identificadores_declarados.add(tokens[i + 1][1])
-
-            if lexema in ["fun", "var"]:
-                if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
-                    errores.append(f"Error en posición {pos}: Se esperaba un identificador después de '{lexema}'")
-            if lexema == "call":
-                if i + 1 >= len(tokens) or tokens[i + 1][0] != "IDENTIFICADOR":
-                    errores.append(f"Error en posición {pos}: Se esperaba un identificador después de 'call'")
-            if lexema in ["in", "out"]:
-                if i + 1 >= len(tokens) or tokens[i + 1][0] != "DELIMITADOR":
-                    errores.append(f"Error en posición {pos}: Se esperaba un delimitador después de '{lexema}'")
-            if lexema in ["if", "else"]:
-                if i + 1 >= len(tokens) or tokens[i + 1][0] != "DELIMITADOR":
-                    errores.append(f"Error en posición {pos}: Se esperaba un delimitador después de '{lexema}'")
-
-        if tipo == "OPERADOR":
-            if i + 1 >= len(tokens) or tokens[i + 1][0] not in ["NUMERO_FLOAT", "NUMERO_ENTERO", "IDENTIFICADOR", "CADENA"]:
-                errores.append(f"Error en posición {pos}: Se esperaba un número, identificador o cadena después del operador '{lexema}'")
-
         if tipo == "IDENTIFICADOR":
-            if lexema not in identificadores_declarados:
-                tipo_anterior, _ , _ = tokens[i - 1] if i > 0 else (None, None, None)
-                if tipo_anterior not in ["PALABRA_RESERVADA", "OPERADOR"]:
-                    errores.append(f"Error en posición {pos}: '{lexema}' indefinido")
+            if i > 0:
+                token_anterior = tokens[i-1]
+                if token_anterior[1] in ["var", "fun", "float", "int", "number"]:
+                    identificadores_definidos.add(lexema)
+                elif token_anterior[1] not in ["call"] and lexema not in identificadores_definidos:
+                    if not (i > 1 and tokens[i-2][1] in ["var", "float", "int", "number", "fun", "call"]):
+                        errores.append(f"Error en posición {pos}: Identificador '{lexema}' indefinido")
+
+        if lexema == "fun":
+            if i + 2 >= len(tokens) or tokens[i+1][0] != "IDENTIFICADOR" or tokens[i+2][1] != "{":
+                errores.append(f"Error en posición {pos}: Estructura incorrecta de función")
+
+        if tipo == "IDENTIFICADOR" and i + 1 < len(tokens):
+            siguiente_token = tokens[i+1]
+            if siguiente_token[1] == "=":
+                if i + 2 >= len(tokens) or tokens[i+2][0] not in ["NUMERO_FLOAT", "NUMERO_ENTERO", "IDENTIFICADOR", "CADENA"]:
+                    errores.append(f"Error en posición {pos}: Asignación incorrecta para '{lexema}'")
+
+        if lexema == "if":
+            if i + 2 >= len(tokens) or tokens[i+1][1] != "(":
+                errores.append(f"Error en posición {pos}: Estructura de condicional incorrecta")
+
+        if lexema == "return":
+            if i + 1 >= len(tokens) or tokens[i+1][0] not in ["IDENTIFICADOR", "NUMERO_FLOAT", "NUMERO_ENTERO"]:
+                errores.append(f"Error en posición {pos}: Return vacío")
+        
+        if lexema == "in":
+            if i + 1 >= len(tokens) or tokens[i+1][0] not in ["IDENTIFICADOR"]:
+                errores.append(f"Error en posición {pos}: Ningun identificador asociado para entrada")
+
+        if lexema == "out":
+            if i + 1 >= len(tokens) or tokens[i+1][1] != "(":
+                errores.append(f"Error en posición {pos}: Error en impresion de entrada o salida")
+
+        if lexema in ["var", "number", "float", "int"]:  
+            if i + 2 >= len(tokens):
+                errores.append(f"Error en posición {pos}: Error de declaración de variable")
+            else:
+                if tokens[i+2][1] != "=":
+                    errores.append(f"Error en posición {pos}: Error en declaración de variable")
+                else:
+                    identificadores_definidos.add(tokens[i+1][1])
 
         if tipo == "DELIMITADOR":
-            delimitadores += 1
+            if lexema in "{(":
+                delimitadores_stack.append(lexema)
+            elif lexema in "})":
+                if not delimitadores_stack:
+                    errores.append(f"Error en posición {pos}: Delimitador de cierre '{lexema}' sin apertura correspondiente")
+                else:
+                    ultimo_delimitador = delimitadores_stack.pop()
+                    if (ultimo_delimitador == "{" and lexema != "}") or \
+                       (ultimo_delimitador == "(" and lexema != ")"):
+                        errores.append(f"Error en posición {pos}: Delimitador no coincidente")
 
-    if delimitadores % 2 != 0:
-        errores.append("Error: Faltan cierres o aperturas de delimitadores")
+        i += 1
+
+    if delimitadores_stack:
+        errores.append(f"Error: Faltan delimitadores de cierre")
 
     return errores
 
@@ -88,9 +113,10 @@ Begin
 fun app {
     var x = 10
     var string = "Hola mundo"
+    number y = 5.5
     if (x > 5) {
-        x = x + 1 
-        return x
+        var sum = x + y
+        return sum
     }
     out(x)
     # Comentario
